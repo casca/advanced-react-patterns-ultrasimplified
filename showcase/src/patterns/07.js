@@ -105,6 +105,10 @@ const useDOMRef = () => {
   return [DOMRef, setRef];
 };
 
+const callFnsInSequence = (...fns) => (...args) => {
+  fns.forEach((fn) => fn && fn(args));
+};
+
 /**
  * custom hook for useClapState
  */
@@ -120,16 +124,21 @@ const useClapState = (initialState = INITIAL_STATE) => {
     }));
   }, []);
 
-  const togglerProps = { onClick: updateClapState, 'aria-pressed': isClicked };
+  const getTogglerProps = ({ onClick, ...otherProps } = {}) => ({
+    onClick: callFnsInSequence(updateClapState, onClick),
+    'aria-pressed': isClicked,
+    ...otherProps,
+  });
 
-  const counterProps = {
+  const getCounterProps = ({ ...otherProps }) => ({
     count: count,
     'aria-valuemax': MAXIMUM_USER_CLAP,
     'aria-valuemin': 0,
     'aria-valuenow': count,
-  };
+    ...otherProps,
+  });
 
-  return { clapState, updateClapState, togglerProps, counterProps };
+  return { clapState, updateClapState, getTogglerProps, getCounterProps };
 };
 
 /**
@@ -195,7 +204,7 @@ const CountTotal = ({ countTotal, setRef, ...restProps }) => {
  * Usage
  */
 const Usage = () => {
-  const { clapState, updateClapState, togglerProps, counterProps } = useClapState();
+  const { clapState, updateClapState, getTogglerProps, getCounterProps } = useClapState();
 
   const { count, countTotal, isClicked } = clapState;
 
@@ -211,12 +220,19 @@ const Usage = () => {
     animationTimeline.replay();
   }, [count]);
 
+  const handleClick = () => {
+    console.log('CLICKED!!!');
+  };
   return (
-    <ClapContainer setRef={setRef} data-refkey="clapRef" {...togglerProps}>
+    <ClapContainer
+      setRef={setRef}
+      data-refkey="clapRef"
+      {...getTogglerProps({ 'aria-pressed': false, onClick: handleClick })}
+    >
       <ClapIcon isClicked={isClicked} />
       {/* 🍕 */}
       <div>{count}</div>
-      <ClapCount setRef={setRef} data-refkey="clapCountRef" {...counterProps} />
+      <ClapCount setRef={setRef} data-refkey="clapCountRef" {...getCounterProps()} />
       <CountTotal countTotal={countTotal} setRef={setRef} data-refkey="clapTotalRef" />
     </ClapContainer>
   );
